@@ -40,16 +40,22 @@ datasource.inputs.template_args = info
 datasource.inputs.sort_filelist = True
 
 binarize = pe.Node(interface=fs.model.Binarize(),name='binarize')
-binarize.inputs.match = [4035] # wm-rh-insula
+binarize.inputs.match = [4035] # 4035 = wm-rh-insula
 
 pbx2 = pe.Node(interface=fsl.ProbTrackX2(), name='probtrackx')
 #pbx2.inputs.out_dir = os.path.abspath('/om/project/voice/processedData/probtrackx2')
+
 pbx2.inputs.target2 = os.path.join('/om/project/voice/processedData/tracula/',
                                     'voice999/dmri.bedpostX/nodif_brain_mask.nii.gz')
 pbx2.inputs.omatrix2 = True
 pbx2.inputs.opd = True
 pbx2.inputs.os2t = True
+pbx2.inputs.s2tastext = True
 pbx2.inputs.loop_check = True
+
+pbx2.inputs.samples_base_name = os.path.join('/om/project/voice/processedData/tracula/',
+                                    'voice999/dmri.bedpostX/merged')
+pbx2.inputs.verbose = 1
 
 datasink = pe.Node(interface=nio.DataSink(), name='datasink')
 datasink.inputs.base_directory = os.path.abspath('/om/project/voice/processedData/probtrackx2')
