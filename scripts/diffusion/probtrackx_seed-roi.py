@@ -10,6 +10,7 @@ import nipype.interfaces.utility as util
 import nipype.pipeline.engine as pe
 import nipype.interfaces.freesurfer as fs
 
+work_dir = os.path.abspath('/om/scratch/Tue/ksitek/tractography')
 subject_list = ['voice999']
 
 info = dict(dwi=[['subject_id', 'data']],
@@ -42,7 +43,7 @@ binarize = pe.Node(interface=fs.model.Binarize(),name='binarize')
 binarize.inputs.match = [4035] # wm-rh-insula
 
 pbx2 = pe.Node(interface=fsl.ProbTrackX2(), name='probtrackx')
-pbx2.inputs.out_dir = os.path.abspath('/om/project/voice/processedData/probtrackx2')
+#pbx2.inputs.out_dir = os.path.abspath('/om/project/voice/processedData/probtrackx2')
 pbx2.inputs.target2 = os.path.join('/om/project/voice/processedData/tracula/',
                                     'voice999/dmri.bedpostX/nodif_brain_mask.nii.gz')
 pbx2.inputs.omatrix2 = True
@@ -51,7 +52,7 @@ pbx2.inputs.os2t = True
 pbx2.inputs.loop_check = True
 
 datasink = pe.Node(interface=nio.DataSink(), name='datasink')
-datasink.inputs.base_directory = os.path.abspath('/om/scratch/Fri/ksitek/probtrackx')
+datasink.inputs.base_directory = os.path.abspath('/om/project/voice/processedData/probtrackx2')
 
 tractography = pe.Workflow(name='tractography')
 tractography.connect([
@@ -72,5 +73,6 @@ tractography.connect([(infosource, datasink, [('subject_id', 'container')]),
                        ('targets','probtrackx.@targets'),
                        ('way_total','probtrackx.@way_total') ]) ])
 
+tractography.base_dir = work_dir
 tractography.run('SLURM',
                  plugin_args={'sbatch_args': '--qos=gablab --time=18:00:00 -N1 -c2 --mem=40G'})
