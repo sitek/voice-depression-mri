@@ -4,21 +4,27 @@
 # KRS 2017.07.28
 
 import os
+from glob import glob
 import nipype.interfaces.io as nio
 import nipype.interfaces.fsl as fsl
 import nipype.interfaces.utility as util
 import nipype.pipeline.engine as pe
 import nipype.interfaces.freesurfer as fs
 
-work_dir = os.path.abspath('/om/scratch/Tue/ksitek/tractography')
-subject_list = ['voice999']
+work_dir = os.path.abspath('/om/scratch/Wed/ksitek/tractography')
+data_dir = os.path.abspath('/om/project/voice/processedData/openfmri')
+#subject_list = ['voice999']
+subject_list = [os.path.basename(x) for x in sorted(glob(data_dir+'/voice*'))]
 
 info = dict(dwi=[['subject_id', 'data']],
             aseg=[['subject_id', 'aparc+aseg+2mm']],
             thsamples=[['subject_id', 'merged_th1samples']],
             fsamples=[['subject_id', 'merged_f1samples']],
             phsamples=[['subject_id', 'merged_ph1samples']],
-            target_masks=[['subject_id', ['nodif_brain_mask']]])
+            mask=[['subject_id', 'nodif_brain_mask']],
+            mask2=[['subject_id', 'nodif_brain_mask']],
+#            target_masks=[['subject_id', 'nodif_brain_mask']]
+            )
 
 infosource = pe.Node(interface=util.IdentityInterface(fields=['subject_id']),
                      name="infosource")
@@ -34,8 +40,10 @@ datasource.inputs.field_template = dict(dwi='%s/dmri/%s.nii.gz',
                                         thsamples='%s/dmri.bedpostX/%s.nii.gz',
                                         fsamples='%s/dmri.bedpostX/%s.nii.gz',
                                         phsamples='%s/dmri.bedpostX/%s.nii.gz',
-#                                        seed_file="%s.bedpostX/%s.nii.gz",
-                                        target_masks="%s/dmri.bedpostX/%s.nii.gz")
+                                        mask="%s/dmri.bedpostX/%s.nii.gz",
+                                        mask2="%s/dmri.bedpostX/%s.nii.gz",
+#                                        target_masks="%s/dmri.bedpostX/%s.nii.gz"
+                                        )
 datasource.inputs.template_args = info
 datasource.inputs.sort_filelist = True
 
@@ -45,16 +53,13 @@ binarize.inputs.match = [4035] # 4035 = wm-rh-insula
 pbx2 = pe.Node(interface=fsl.ProbTrackX2(), name='probtrackx')
 #pbx2.inputs.out_dir = os.path.abspath('/om/project/voice/processedData/probtrackx2')
 
-pbx2.inputs.target2 = os.path.join('/om/project/voice/processedData/tracula/',
-                                    'voice999/dmri.bedpostX/nodif_brain_mask.nii.gz')
+#pbx2.inputs.target2 = os.path.join('/om/project/voice/processedData/tracula/',
+#                                    'voice999/dmri.bedpostX/nodif_brain_mask.nii.gz')
 pbx2.inputs.omatrix2 = True
 pbx2.inputs.opd = True
-pbx2.inputs.os2t = True
+#pbx2.inputs.os2t = True # needs --target_masks in order to run?
 pbx2.inputs.s2tastext = True
 pbx2.inputs.loop_check = True
-
-pbx2.inputs.samples_base_name = os.path.join('/om/project/voice/processedData/tracula/',
-                                    'voice999/dmri.bedpostX/merged')
 pbx2.inputs.verbose = 1
 
 datasink = pe.Node(interface=nio.DataSink(), name='datasink')
@@ -68,7 +73,10 @@ tractography.connect([(datasource, pbx2,
                       [('thsamples', 'thsamples'),
                        ('phsamples', 'phsamples'),
                        ('fsamples', 'fsamples'),
-                       ('target_masks', 'mask')])])
+                       ('mask', 'mask'),
+                       ('mask2', 'target2')#,
+#                       ('target_masks', 'target_masks')
+                       ])])
 tractography.connect([(datasource, binarize, [('aseg','in_file')] )])
 tractography.connect([(infosource, datasink, [('subject_id', 'container')]),
                       (pbx2, datasink,
@@ -81,4 +89,4 @@ tractography.connect([(infosource, datasink, [('subject_id', 'container')]),
 
 tractography.base_dir = work_dir
 tractography.run('SLURM',
-                 plugin_args={'sbatch_args': '--qos=gablab --time=18:00:00 -N1 -c2 --mem=40G'})
+                 plugin_args={'sbatch_args': '--qos=gablab --time=1:00:00 -N1 -c2 --mem=40G'})
