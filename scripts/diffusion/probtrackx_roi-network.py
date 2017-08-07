@@ -1,7 +1,7 @@
 # Run probabilistic tractography via FSL FDT's ProbTrackX2
 # Requires having run bedpostx (or TRACULA) already
-# Also extracts an aparc seed mask
-# KRS 2017.07.28
+# Runs network connectivity (omatrix1) by creating diffusion-space aparc masks
+# KRS 2017.08.04
 
 import os
 from glob import glob
