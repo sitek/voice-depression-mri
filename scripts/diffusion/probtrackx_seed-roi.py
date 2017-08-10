@@ -116,29 +116,6 @@ binarize.inputs.out_type = 'nii'
 binarize.plugin_args = {'sbatch_args': '--qos=gablab --mem=40G --time=1:00:00',
                        'overwrite': True}
 
-# custom node to take the binarize outputs and bring the workflow back together
-# also should create a txt file with binarize output file paths
-# UPDATE: not actually necessary - lists automatically converted to .txt,
-# and the nipype probtrackx interface actually gets confused by getting a .txt
-def make_target_mask_txt(target_mask_files):
-    import numpy as np
-    import os
-    target_mask_txt = os.path.join(os.getcwd(), 'target_masks.txt')
-    #np.savetxt(target_mask_txt, target_mask_files)
-    file = open(target_mask_txt, 'w')
-    file.writelines("%s\n" % item  for item in target_mask_files)
-    file.close()
-
-    #output the file name for probtrackx network mask input
-    return target_mask_txt
-
-make_target_mask_txt = pe.Node(name='make_target_mask_txt',
-               interface=util.Function(input_names=['target_mask_files'],
-                                  output_names=['target_mask_txt'],
-                                  function=make_target_mask_txt))
-make_target_mask_txt.plugin_args = {'sbatch_args': '--qos=gablab --mem=40G --time=1:00:00',
-                       'overwrite': True}
-
 # probtrackx2
 pbx2 = pe.Node(interface=fsl.ProbTrackX2(), name='probtrackx')
 #pbx2.inputs.omatrix2 = True
