@@ -13,7 +13,7 @@ import nipype.interfaces.freesurfer as fs
 
 work_dir = os.path.abspath('/om/scratch/Thu/ksitek/')
 tracula_dir = os.path.abspath('/om/project/voice/processedData/tracula/')
-out_dir = os.path.abspath('/om/project/voice/processedData/')
+out_dir = os.path.abspath('/om/project/voice/processedData/probtrackx')
 
 # create the subject list
 #subject_list = ['voice999']
@@ -143,16 +143,17 @@ datasink.inputs.base_directory = out_dir
 datasink.plugin_args = {'sbatch_args': '--qos=gablab --mem=40G --time=1:00:00',
                        'overwrite': True}
 
+tractography.connect([(infosource, datasink, [('subject_id','container')] )])
+
 tractography.connect([(pbx2, datasink,
-                      [('fdt_paths','probtrackx'),
-                       ('log','probtrackx.@log'),
-                       ('matrix1_dot','probtrackx.@matrix1_dot'),
-                       ('network_matrix','probtrackx.@network_matrix'),
-                       ('targets','probtrackx.targets'),
-                       ('way_total','probtrackx.@way_total') ]) ])
+                      [('fdt_paths','fdt_paths'),
+                       ('log','log'),
+                       ('matrix1_dot','matrix1.@matrix1_dot'),
+                       ('network_matrix','matrix1.@network_matrix'),
+                       ('targets','targets'),
+                       ('way_total','way_total') ]) ])
 
 tractography.base_dir = work_dir
 tractography.run(plugin='SLURM',
                  plugin_args={'sbatch_args': '--time=4:00:00 -N1 -c2 --mem=40G',
                  'max_jobs':200})
-# H
