@@ -28,10 +28,7 @@ info = dict(dwi=[['subject_id', 'data']],
             thsamples=[['subject_id', 'merged_th1samples']],
             fsamples=[['subject_id', 'merged_f1samples']],
             phsamples=[['subject_id', 'merged_ph1samples']],
-            mask=[['subject_id', 'nodif_brain_mask']],
-#            mask2=[['subject_id', 'nodif_brain_mask']],
-#            target_masks=[['subject_id', 'nodif_brain_mask']]
-            )
+            mask=[['subject_id', 'nodif_brain_mask']])
 
 infosource = pe.Node(interface=util.IdentityInterface(fields=['subject_id']),
                      name="infosource")
@@ -47,10 +44,7 @@ datasource.inputs.field_template = dict(dwi='%s/dmri/%s.nii.gz',
                                         thsamples='%s/dmri.bedpostX/%s.nii.gz',
                                         fsamples='%s/dmri.bedpostX/%s.nii.gz',
                                         phsamples='%s/dmri.bedpostX/%s.nii.gz',
-                                        mask="%s/dmri.bedpostX/%s.nii.gz"#,
-#                                        mask2="%s/dmri.bedpostX/%s.nii.gz",
-#                                        target_masks="%s/dmri.bedpostX/%s.nii.gz"
-                                        )
+                                        mask="%s/dmri.bedpostX/%s.nii.gz")
 datasource.inputs.template_args = info
 datasource.inputs.sort_filelist = True
 datasource.plugin_args = {'sbatch_args': '--qos=gablab --mem=40G --time=1:00:00',
@@ -91,7 +85,6 @@ def aseg_name_grabber(label_values, fslut_file):
 
     # this goes to a mapnode next, and mapnode wants a list of lists,
     # not an np.array
-    #label_values_filtered = label_values_filtered.tolist()[0]
     label_values_filtered = [[x] for x in label_values_filtered]
     return label_values_filtered, label_names
 
@@ -118,16 +111,12 @@ binarize.plugin_args = {'sbatch_args': '--qos=gablab --mem=40G --time=1:00:00',
 
 # probtrackx2
 pbx2 = pe.Node(interface=fsl.ProbTrackX2(), name='probtrackx')
-#pbx2.inputs.omatrix2 = True
 pbx2.inputs.omatrix1 = True
 pbx2.inputs.opd = True
 pbx2.inputs.os2t = True
 pbx2.inputs.s2tastext = True
 pbx2.inputs.loop_check = True
 pbx2.inputs.verbose = 1
-
-datasink = pe.Node(interface=nio.DataSink(), name='datasink')
-datasink.inputs.base_directory = out_dir
 
 tractography = pe.Workflow(name='tractography')
 tractography.connect([
@@ -136,10 +125,7 @@ tractography.connect([(datasource, pbx2,
                       [('thsamples', 'thsamples'),
                        ('phsamples', 'phsamples'),
                        ('fsamples', 'fsamples'),
-                       ('mask', 'mask')#,
-#                       ('mask2', 'target2')#,
-#                       ('mask2', 'target1')#,
-                       ])])
+                       ('mask', 'mask') ])])
 tractography.connect([(datasource, binarize_seed, [('aseg','in_file')] )])
 tractography.connect([(datasource, binarize, [('aseg','in_file')] )])
 
@@ -150,22 +136,23 @@ tractography.connect([(datasource, aseg_value_grabber, [('aseg','aseg_file')] )]
 tractography.connect([(aseg_value_grabber, aseg_name_grabber, [('label_values','label_values')] )])
 tractography.connect([(aseg_name_grabber, binarize,
                        [('label_values_filtered','match'), ('label_names', 'binary_file')] )])
-#                       [('label_values_filtered','match')] )])
-#tractography.connect([(binarize, make_target_mask_txt, [('binary_file','target_mask_files')] )])
-#tractography.connect([(make_target_mask_txt, pbx2, [('target_mask_txt','target_masks')] )])
 tractography.connect([(binarize, pbx2, [('binary_file','target_masks')] )])
 
+datasink = pe.Node(interface=nio.DataSink(), name='datasink')
+datasink.inputs.base_directory = out_dir
+datasink.plugin_args = {'sbatch_args': '--qos=gablab --mem=40G --time=1:00:00',
+                       'overwrite': True}
+
 tractography.connect([(pbx2, datasink,
-                      [('fdt_paths','probtrackx.@fdt_paths'),
+                      [('fdt_paths','probtrackx'),
                        ('log','probtrackx.@log'),
-#                       ('lookup_tractspace','probtrackx.@lookup_tractspace'),
-#                       ('matrix2_dot','probtrackx.@matrix2_dot'),
                        ('matrix1_dot','probtrackx.@matrix1_dot'),
                        ('network_matrix','probtrackx.@network_matrix'),
-                       ('targets','probtrackx.@targets'),
+                       ('targets','probtrackx.targets'),
                        ('way_total','probtrackx.@way_total') ]) ])
 
 tractography.base_dir = work_dir
 tractography.run(plugin='SLURM',
-                 plugin_args={'sbatch_args': '--time=24:00:00 -N1 -c2 --mem=40G',
+                 plugin_args={'sbatch_args': '--time=4:00:00 -N1 -c2 --mem=40G',
                  'max_jobs':200})
+# H
