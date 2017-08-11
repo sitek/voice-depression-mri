@@ -144,7 +144,7 @@ datasink.plugin_args = {'sbatch_args': '--qos=gablab --mem=40G --time=1:00:00',
                        'overwrite': True}
 
 tractography.connect([(infosource, datasink, [('subject_id','container')] )])
-
+tractography.connect([(aseg_name_grabber, datasink, [('label_names','target_list')] )])
 tractography.connect([(pbx2, datasink,
                       [('fdt_paths','fdt_paths'),
                        ('log','log'),
@@ -152,6 +152,7 @@ tractography.connect([(pbx2, datasink,
                        ('network_matrix','matrix1.@network_matrix'),
                        ('targets','targets'),
                        ('way_total','way_total') ]) ])
+tractography.config['execution']['parameterize_dirs'] = False
 
 tractography.base_dir = work_dir
 tractography.run(plugin='SLURM',
