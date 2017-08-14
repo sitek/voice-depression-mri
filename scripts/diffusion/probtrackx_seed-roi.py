@@ -78,8 +78,12 @@ def aseg_name_grabber(label_values, fslut_file):
                           comment='#', header=None,
                           names=['Num','LabelName','R','G','B','A'])
     # only keep values between 1-999 and between 3000-4999
-    label_values_filtered = label_values[((label_values<100) & (label_values>0))
-                                         | ((label_values<5000) & (label_values>=3000))]
+    label_values_filtered = label_values[((label_values>=6) & (label_values<=13))
+                                         | ((label_values>=16) & (label_values<=20))
+                                         | ((label_values>=26) & (label_values<=28))
+                                         | ((label_values>=40) & (label_values<=60))
+                                         | ((label_values>=3101) & (label_values<=3199))
+                                         | ((label_values>=4101) & (label_values<=4199))]
     label_names_list = fslut.set_index('Num').loc[label_values_filtered, 'LabelName'].tolist()
 
     # add '.nii' to each file for file naming purposes:
