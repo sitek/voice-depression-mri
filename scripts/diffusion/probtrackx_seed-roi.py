@@ -11,7 +11,7 @@ import nipype.interfaces.utility as util
 import nipype.pipeline.engine as pe
 import nipype.interfaces.freesurfer as fs
 
-work_dir = os.path.abspath('/om/scratch/Thu/ksitek/')
+work_dir = os.path.abspath('/om/scratch/Mon/ksitek/')
 tracula_dir = os.path.abspath('/om/project/voice/processedData/tracula/')
 out_dir = os.path.abspath('/om/project/voice/processedData/probtrackx')
 
@@ -77,7 +77,8 @@ def aseg_name_grabber(label_values, fslut_file):
                           comment='#', header=None,
                           names=['Num','LabelName','R','G','B','A'])
     # only keep values between 1-999 and between 3000-4999
-    label_values_filtered = label_values[((label_values<100) & (label_values>0)) | ((label_values<5000) & (label_values>=3000))]
+    label_values_filtered = label_values[((label_values<100) & (label_values>0))
+                                         | ((label_values<5000) & (label_values>=3000))]
     label_names_list = fslut.set_index('Num').loc[label_values_filtered, 'LabelName'].tolist()
 
     # add '.nii' to each file for file naming purposes:
@@ -109,6 +110,27 @@ binarize.inputs.out_type = 'nii'
 binarize.plugin_args = {'sbatch_args': '--qos=gablab --mem=40G --time=1:00:00',
                        'overwrite': True}
 
+# save targets to a txt file
+# not for probtrackx2 directly, but to keep a record for later analysis
+def make_target_mask_txt(target_mask_files):
+    import numpy as np
+    import os
+    target_mask_txt = os.path.join(os.getcwd(), 'target_masks.txt')
+    #np.savetxt(target_mask_txt, target_mask_files)
+    file = open(target_mask_txt, 'w')
+    file.writelines("%s\n" % item  for item in target_mask_files)
+    file.close()
+
+    #output the file name for probtrackx network mask input
+    return target_mask_txt
+
+make_target_mask_txt = pe.Node(name='make_target_mask_txt',
+               interface=util.Function(input_names=['target_mask_files'],
+                                  output_names=['target_mask_txt'],
+                                  function=make_target_mask_txt))
+make_target_mask_txt.plugin_args = {'sbatch_args': '--qos=gablab --mem=10G --time=1:00:00',
+                        'overwrite': True}
+
 # probtrackx2
 pbx2 = pe.Node(interface=fsl.ProbTrackX2(), name='probtrackx')
 pbx2.inputs.omatrix1 = True
@@ -118,6 +140,7 @@ pbx2.inputs.s2tastext = True
 pbx2.inputs.loop_check = True
 pbx2.inputs.verbose = 1
 
+# connect nodes in a workflow
 tractography = pe.Workflow(name='tractography')
 tractography.connect([
     (infosource, datasource, [('subject_id', 'subject_id')])])
@@ -131,12 +154,15 @@ tractography.connect([(datasource, binarize, [('aseg','in_file')] )])
 
 tractography.connect([(binarize_seed, pbx2, [('binary_file', 'seed')] )])
 
-# new connections for aseg mapnode stuff:
 tractography.connect([(datasource, aseg_value_grabber, [('aseg','aseg_file')] )])
-tractography.connect([(aseg_value_grabber, aseg_name_grabber, [('label_values','label_values')] )])
+tractography.connect([(aseg_value_grabber, aseg_name_grabber,
+                       [('label_values','label_values')] )])
 tractography.connect([(aseg_name_grabber, binarize,
-                       [('label_values_filtered','match'), ('label_names', 'binary_file')] )])
+                       [('label_values_filtered','match'),
+                        ('label_names', 'binary_file')] )])
 tractography.connect([(binarize, pbx2, [('binary_file','target_masks')] )])
+tractography.connect([(aseg_name_grabber, make_target_mask_txt,
+                       [('label_names', 'target_mask_files')] )])
 
 datasink = pe.Node(interface=nio.DataSink(), name='datasink')
 datasink.inputs.base_directory = out_dir
@@ -144,14 +170,15 @@ datasink.plugin_args = {'sbatch_args': '--qos=gablab --mem=40G --time=1:00:00',
                        'overwrite': True}
 
 tractography.connect([(infosource, datasink, [('subject_id','container')] )])
-tractography.connect([(aseg_name_grabber, datasink, [('label_names','target_list')] )])
+tractography.connect([(make_target_mask_txt, datasink,
+                       [('target_mask_txt','target_list')] )])
 tractography.connect([(pbx2, datasink,
-                      [('fdt_paths','fdt_paths'),
-                       ('log','log'),
-                       ('matrix1_dot','matrix1.@matrix1_dot'),
-                       ('network_matrix','matrix1.@network_matrix'),
-                       ('targets','targets'),
-                       ('way_total','way_total') ]) ])
+                       [('fdt_paths','fdt_paths'),
+                        ('log','log'),
+                        ('matrix1_dot','matrix1.@matrix1_dot'),
+                        ('network_matrix','matrix1.@network_matrix'),
+                        ('targets','targets'),
+                        ('way_total','way_total') ]) ])
 tractography.config['execution']['parameterize_dirs'] = False
 
 tractography.base_dir = work_dir
