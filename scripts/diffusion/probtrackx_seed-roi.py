@@ -50,8 +50,7 @@ datasource.inputs.sort_filelist = True
 datasource.plugin_args = {'sbatch_args': '--qos=gablab --mem=40G --time=1:00:00',
                        'overwrite': True}
 
-# custom function that reads nifti with nibabel/nilearn & finds unique values,
-# which it will then send to binarize to create per-ROI mask files
+# custom function that reads nifti with nibabel/nilearn & finds unique values
 def aseg_value_grabber(aseg_file):
     import numpy as np
     import nibabel as nib
@@ -68,6 +67,8 @@ aseg_value_grabber = pe.Node(name='aseg_value_grabber',
 aseg_value_grabber.plugin_args = {'sbatch_args': '--qos=gablab --mem=40G --time=1:00:00',
                        'overwrite': True}
 
+# custom function to grab label names from freesurfer lookup table
+# also returns matching, filtered value list
 def aseg_name_grabber(label_values, fslut_file):
     import numpy as np
     import pandas as pd
@@ -185,4 +186,3 @@ tractography.base_dir = work_dir
 tractography.run(plugin='SLURM',
                  plugin_args={'sbatch_args': '--time=4:00:00 -N1 -c2 --mem=40G',
                  'max_jobs':200})
-# HI
