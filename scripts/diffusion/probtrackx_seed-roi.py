@@ -81,7 +81,7 @@ def aseg_name_grabber(label_values, fslut_file):
     label_values_filtered = label_values[((label_values>=6) & (label_values<=13))
                                        | ((label_values>=16) & (label_values<=20))
                                        | ((label_values>=26) & (label_values<=28))
-                                       | ((label_values>=40) & (label_values<=60))
+                                       | ((label_values>=45) & (label_values<=60))
                                        | ((label_values>=3001) & (label_values<=3099))
                                        | ((label_values>=4001) & (label_values<=4099))]
     label_names_list = fslut.set_index('Num').loc[label_values_filtered, 'LabelName'].tolist()
